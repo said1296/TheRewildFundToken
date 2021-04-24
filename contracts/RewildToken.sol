@@ -8,9 +8,6 @@ contract RewildToken is ERC20Taxable, Ownable {
     uint8 private _taxBasisPoints = 100;
     address private _donationAddress = 0xb6e1aA93DB091141Ef1C67751b4068A2d807a8c2;
 
-    // Necessary basis points exponent to achieve a resolution of 1 token when calculating percentages
-    uint8 private _basisPointsExponent = 28;
-
     constructor ()
         ERC20Taxable('Rewild', 'RWLD')
     {
@@ -75,15 +72,7 @@ contract RewildToken is ERC20Taxable, Ownable {
         return _donationAddress;
     }
 
-    function basisPointsFactor() internal view returns(uint256) {
-        return 10 ** basisPointsExponent();
-    }
-
-    function basisPointsExponent() internal view returns(uint8) {
-        return _basisPointsExponent;
-    }
-
-    function taxBasisPoints() public view returns (uint8){
+    function taxBasisPoints() public view returns (uint8) {
         return _taxBasisPoints;
     }
 }
