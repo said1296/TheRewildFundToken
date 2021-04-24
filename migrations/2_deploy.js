@@ -1,5 +1,5 @@
-const contract = artifacts.require('./TheRewildFundToken')
+const contract = artifacts.require('./RewildToken')
 
 module.exports = function(deployer) {
-    deployer.deploy(contract, "The Rewild Fund Token", "RWLD")
+    deployer.deploy(contract)
 }

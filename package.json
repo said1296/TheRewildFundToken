@@ -1,5 +1,5 @@
 {
-  "name": "therewildfundtoken",
+  "name": "rewildtoken",
   "version": "1.0.0",
   "description": "Token for The Rewild Fund project",
   "main": "truffle-config.js",

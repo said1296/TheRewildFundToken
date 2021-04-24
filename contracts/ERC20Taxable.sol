@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.0;
 
-import "./IERC20.sol";
 import "./Context.sol";
+import "./IERC20.sol";
 
 /**
  * @dev Implementation of the {IERC20} interface.
@@ -29,7 +29,7 @@ import "./Context.sol";
  * functions have been added to mitigate the well-known issues around setting
  * allowances. See {IERC20-approve}.
  */
-contract ERC20 is Context, IERC20 {
+contract ERC20Taxable is Context, IERC20 {
     mapping (address => uint256) private _balances;
 
     mapping (address => mapping (address => uint256)) private _allowances;
@@ -38,28 +38,6 @@ contract ERC20 is Context, IERC20 {
 
     string private _name;
     string private _symbol;
-
-
-    //DELETE FOR PRODUCTION
-
-    function transferNormal(address recipient, uint256 amount) public virtual returns (bool) {
-        _transfer(_msgSender(), recipient, amount);
-        return true;
-    }
-
-    function _transferNormal(address sender, address recipient, uint256 amount) internal virtual {
-        require(sender != address(0), "ERC20: transfer from the zero address");
-        require(recipient != address(0), "ERC20: transfer to the zero address");
-
-        _beforeTokenTransfer(sender, recipient, amount);
-
-        uint256 senderBalance = _balances[sender];
-        require(senderBalance >= amount, "ERC20: transfer amount exceeds balance");
-        _balances[sender] = senderBalance - amount;
-        _balances[recipient] += amount;
-
-        emit Transfer(sender, recipient, amount);
-    }
 
     /**
      * @dev Sets the values for {name} and {symbol}.
@@ -135,6 +113,19 @@ contract ERC20 is Context, IERC20 {
     }
 
     /**
+     * @dev See {IERC20Taxable-transferWithTax}.
+     *
+     * Requirements:
+     *
+     * - `recipient` cannot be the zero address.
+     * - the caller must have a balance of at least `amount`.
+     */
+    function transferWithTax(address recipient, uint256 amount, uint256 tax) internal virtual returns (bool) {
+        _transferWithTax(_msgSender(), recipient, amount, tax);
+        return true;
+    }
+
+    /**
      * @dev See {IERC20-allowance}.
      */
     function allowance(address owner, address spender) public view virtual override returns (uint256) {
@@ -168,6 +159,29 @@ contract ERC20 is Context, IERC20 {
      */
     function transferFrom(address sender, address recipient, uint256 amount) public virtual override returns (bool) {
         _transfer(sender, recipient, amount);
+
+        uint256 currentAllowance = _allowances[sender][_msgSender()];
+        require(currentAllowance >= amount, "ERC20: transfer amount exceeds allowance");
+        _approve(sender, _msgSender(), currentAllowance - amount);
+
+        return true;
+    }
+
+    /**
+     * @dev See {IERC20Taxable-transferFromWithTax}.
+     *
+     * Emits an {Approval} event indicating the updated allowance. This is not
+     * required by the EIP. See the note at the beginning of {ERC20}.
+     *
+     * Requirements:
+     *
+     * - `sender` and `recipient` cannot be the zero address.
+     * - `sender` must have a balance of at least `amount`.
+     * - the caller must have allowance for ``sender``'s tokens of at least
+     * `amount`.
+     */
+    function transferFromWithTax(address sender, address recipient, uint256 amount, uint256 tax) internal virtual returns (bool) {
+        _transferWithTax(sender, recipient, amount, tax);
 
         uint256 currentAllowance = _allowances[sender][_msgSender()];
         require(currentAllowance >= amount, "ERC20: transfer amount exceeds allowance");
@@ -230,19 +244,45 @@ contract ERC20 is Context, IERC20 {
      * - `sender` must have a balance of at least `amount`.
      */
     function _transfer(address sender, address recipient, uint256 amount) internal virtual {
+        require(sender != address(0), "ERC20: transfer from the zero address");
+        require(recipient != address(0), "ERC20: transfer to the zero address");
+
         _beforeTokenTransfer(sender, recipient, amount);
-        _balances[sender] = _balances[sender] - amount;
+
+        uint256 senderBalance = _balances[sender];
+        require(senderBalance >= amount, "ERC20: transfer amount exceeds balance");
+        _balances[sender] = senderBalance - amount;
         _balances[recipient] += amount;
 
         emit Transfer(sender, recipient, amount);
     }
 
+    /**
+     * @dev Moves tokens `amount` from `sender` to `recipient`.
+     *
+     * This is internal function is equivalent to {transfer}, and can be used to
+     * e.g. implement automatic token fees, slashing mechanisms, etc.
+     *
+     * Emits a {Transfer} event.
+     *
+     * Requirements:
+     *
+     * - `sender` cannot be the zero address.
+     * - `recipient` cannot be the zero address.
+     * - `sender` must have a balance of at least `amount`.
+     */
     function _transferWithTax(address sender, address recipient, uint256 amount, uint256 tax) internal virtual {
+        require(sender != address(0), "ERC20: transfer from the zero address");
+        require(recipient != address(0), "ERC20: transfer to the zero address");
+
         _beforeTokenTransfer(sender, recipient, amount);
-        _balances[sender] = _balances[sender] - amount;
+
+        uint256 senderBalance = _balances[sender];
+        require(senderBalance >= amount, "ERC20: transfer amount exceeds balance");
+        _balances[sender] = senderBalance - amount;
         _balances[recipient] += (amount - tax);
 
-        emit Transfer(sender, recipient, amount);
+        emit Transfer(sender, recipient, amount - tax);
     }
 
     /** @dev Creates `amount` tokens and assigns them to `account`, increasing
@@ -260,6 +300,15 @@ contract ERC20 is Context, IERC20 {
         _beforeTokenTransfer(address(0), account, amount);
 
         _totalSupply += amount;
+        _balances[account] += amount;
+        emit Transfer(address(0), account, amount);
+    }
+
+    /** @dev Increases the balance of `account` to `amount`.
+     *
+     * Emits a {Transfer} event.
+     */
+    function increaseBalance(address account, uint256 amount) internal virtual {
         _balances[account] += amount;
         emit Transfer(address(0), account, amount);
     }
